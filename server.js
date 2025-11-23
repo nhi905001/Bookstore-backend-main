@@ -27,9 +27,9 @@ app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-app.use("/products", productRoutes);
-app.use("/users", userRoutes);
-app.use("/orders", orderRoutes);
+app.use("api/products", productRoutes);
+app.use("api/users", userRoutes);
+app.use("api/orders", orderRoutes);
 
 const PORT = process.env.PORT || 5000;
 
