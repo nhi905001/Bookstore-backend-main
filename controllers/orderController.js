@@ -1,8 +1,14 @@
-import Order from '../models/order.js';
-import Product from '../models/product.js';
-import User from '../models/user.js';
+import Order from "../models/order.js";
+import Product from "../models/product.js";
+import User from "../models/user.js";
 
-const ORDER_STATUSES = ['pending', 'processing', 'shipping', 'delivered', 'cancelled'];
+const ORDER_STATUSES = [
+  "pending",
+  "processing",
+  "shipping",
+  "delivered",
+  "cancelled",
+];
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -11,24 +17,24 @@ const addOrderItems = async (req, res) => {
   const { orderItems, shippingAddress, totalPrice } = req.body;
 
   if (orderItems && orderItems.length === 0) {
-    res.status(400).json({ message: 'No order items' });
+    res.status(400).json({ message: "No order items" });
     return;
   }
 
   if (!shippingAddress?.phone) {
-    return res.status(400).json({ message: 'Số điện thoại là bắt buộc' });
+    return res.status(400).json({ message: "Số điện thoại là bắt buộc" });
   }
 
   try {
     const order = new Order({
-      orderItems: orderItems.map(item => ({ ...item, product: item._id })),
+      orderItems: orderItems.map((item) => ({ ...item })),
       user: req.user._id,
       shippingAddress,
       totalPrice,
       statusHistory: [
         {
-          status: 'pending',
-          note: 'Đơn hàng đã được tạo',
+          status: "pending",
+          note: "Đơn hàng đã được tạo",
           updatedAt: new Date(),
         },
       ],
@@ -38,7 +44,7 @@ const addOrderItems = async (req, res) => {
 
     res.status(201).json(createdOrder);
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
@@ -50,7 +56,7 @@ const getMyOrders = async (req, res) => {
     const orders = await Order.find({ user: req.user._id });
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: 'Server Error' });
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
@@ -64,13 +70,13 @@ const getOrders = async (req, res) => {
 
     const count = await Order.countDocuments({});
     const orders = await Order.find({})
-      .populate('user', 'id name email')
+      .populate("user", "id name email")
       .limit(pageSize)
       .skip(pageSize * (page - 1));
 
     res.json({ orders, page, pages: Math.ceil(count / pageSize) });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error' });
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
@@ -86,16 +92,18 @@ const getOrderById = async (req, res) => {
         !req.user.isAdmin &&
         order.user.toString() !== req.user._id.toString()
       ) {
-        return res.status(403).json({ message: 'Not authorized to view this order' });
+        return res
+          .status(403)
+          .json({ message: "Not authorized to view this order" });
       }
 
-      await order.populate('user', 'name email');
+      await order.populate("user", "name email");
       res.json(order);
     } else {
-      res.status(404).json({ message: 'Order not found' });
+      res.status(404).json({ message: "Order not found" });
     }
   } catch (error) {
-    res.status(500).json({ message: 'Server Error' });
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
@@ -106,7 +114,7 @@ const updateOrderStatus = async (req, res) => {
   const { status, note } = req.body;
 
   if (!ORDER_STATUSES.includes(status)) {
-    return res.status(400).json({ message: 'Trạng thái không hợp lệ' });
+    return res.status(400).json({ message: "Trạng thái không hợp lệ" });
   }
 
   try {
@@ -129,14 +137,14 @@ const updateOrderStatus = async (req, res) => {
       };
 
       order.orderStatus = status;
-      if (status === 'delivered') {
+      if (status === "delivered") {
         if (!order.stockDeducted) {
           await adjustInventory(false);
           order.stockDeducted = true;
         }
         order.isDelivered = true;
         order.deliveredAt = Date.now();
-      } else if (status === 'cancelled') {
+      } else if (status === "cancelled") {
         if (order.stockDeducted) {
           await adjustInventory(true);
           order.stockDeducted = false;
@@ -156,10 +164,10 @@ const updateOrderStatus = async (req, res) => {
 
       res.json(updatedOrder);
     } else {
-      res.status(404).json({ message: 'Order not found' });
+      res.status(404).json({ message: "Order not found" });
     }
   } catch (error) {
-    res.status(500).json({ message: 'Server Error' });
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
@@ -172,25 +180,32 @@ const getRevenueSummary = async (req, res) => {
     const months = monthsParam > 0 ? monthsParam : 6;
 
     const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+    const startDate = new Date(
+      now.getFullYear(),
+      now.getMonth() - (months - 1),
+      1
+    );
 
     const [monthlyData, totals, totalUsers, totalProducts] = await Promise.all([
       Order.aggregate([
         { $match: { createdAt: { $gte: startDate } } },
         {
           $group: {
-            _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
-            revenue: { $sum: '$totalPrice' },
+            _id: {
+              year: { $year: "$createdAt" },
+              month: { $month: "$createdAt" },
+            },
+            revenue: { $sum: "$totalPrice" },
             orders: { $sum: 1 },
           },
         },
-        { $sort: { '_id.year': 1, '_id.month': 1 } },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
       ]),
       Order.aggregate([
         {
           $group: {
             _id: null,
-            totalRevenue: { $sum: '$totalPrice' },
+            totalRevenue: { $sum: "$totalPrice" },
             totalOrders: { $sum: 1 },
           },
         },
@@ -205,7 +220,9 @@ const getRevenueSummary = async (req, res) => {
         return [
           key,
           {
-            label: `${item._id.month.toString().padStart(2, '0')}/${item._id.year}`,
+            label: `${item._id.month.toString().padStart(2, "0")}/${
+              item._id.year
+            }`,
             month: item._id.month,
             year: item._id.year,
             revenue: item.revenue,
@@ -223,7 +240,9 @@ const getRevenueSummary = async (req, res) => {
         filledMonthly.push(monthlyMap.get(key));
       } else {
         filledMonthly.push({
-          label: `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`,
+          label: `${(date.getMonth() + 1)
+            .toString()
+            .padStart(2, "0")}/${date.getFullYear()}`,
           month: date.getMonth() + 1,
           year: date.getFullYear(),
           revenue: 0,
@@ -242,7 +261,7 @@ const getRevenueSummary = async (req, res) => {
       monthlyRevenue: filledMonthly,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
