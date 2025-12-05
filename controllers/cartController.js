@@ -82,7 +82,7 @@ const updateCartItem = async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    const item = cart.items.find((i) => i.productId.toString() === productId);
+    const item = cart.items.find((i) => i.product.toString() === productId);
 
     if (!item) {
       return res.status(404).json({ message: "Item not found in cart" });
@@ -112,7 +112,7 @@ const removeCartItem = async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    cart.items = cart.items.filter((i) => i.productId.toString() !== productId);
+    cart.items = cart.items.filter((i) => i.product.toString() !== productId);
 
     const updatedCart = await cart.save();
 
